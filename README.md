@@ -6,7 +6,6 @@ Este script te permite generar un archivo Excel con los datos de una playlist p�
 ## Requisitos
 
 - Python 3.x
-- Una aplicación en Spotify Developer con client ID y secret
 
 ## Instalación
 
