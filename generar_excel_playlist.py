@@ -18,6 +18,14 @@ LIGHT_GRAY = "EFEFEF"
 OUTPUT_FOLDER = "PlaylistsExcel"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+# Función para limpiar el nombre de la playlist y convertirlo en un nombre de archivo seguro
+def clean_filename(name):
+    # Lista de caracteres no permitidos en Windows
+    invalid_chars = ['\\', '/', ':', '*', '?', '"', '<', '>', '|']
+    for char in invalid_chars:
+        name = name.replace(char, "_")
+    return name
+
 def main():
     client_id = "71114e96572a4b759750f90f89653e12"
     client_secret = "44374ebc9731491e87bee7fad0156a2c"
@@ -32,11 +40,20 @@ def main():
     playlist_name = playlist['name']
     playlist_image_url = playlist['images'][0]['url']
 
+    print(f"URL de la imagen de la playlist: {playlist_image_url}")
+    
+    # Limpiar el nombre de la playlist para evitar caracteres no permitidos
+    safe_playlist_name = clean_filename(playlist_name)
+
     # Descargar imagen
-    img_data = requests.get(playlist_image_url).content
-    img_path = os.path.join(OUTPUT_FOLDER, f"{playlist_name}_image.png")
-    with open(img_path, 'wb') as f:
-        f.write(img_data)
+    response = requests.get(playlist_image_url)
+    if response.status_code == 200:
+        img_path = os.path.join(OUTPUT_FOLDER, f"{safe_playlist_name}_image.png")
+        with open(img_path, 'wb') as f:
+            f.write(response.content)
+    else:
+        print(f"Error al descargar la imagen. Código de estado: {response.status_code}")
+        return
 
     tracks_data = []
     for item in playlist['tracks']['items']:
@@ -50,16 +67,13 @@ def main():
         duration = f"{minutes}:{seconds:02d}"
         tracks_data.append((name, artist, duration, url))
 
-    # Crear Excel con openpyxl
     wb = Workbook()
     ws = wb.active
     ws.title = "Playlist"
 
-    # Títulos
     headers = ["Canción", "Artista(s)", "Duración"]
     ws.append(headers)
 
-    # Estilos
     header_font = Font(bold=True, color="FFFFFF", name="Arial")
     header_fill = PatternFill("solid", fgColor=SPOTIFY_GREEN)
     center_align = Alignment(horizontal="center", vertical="center")
@@ -71,7 +85,6 @@ def main():
         cell.fill = header_fill
         cell.alignment = center_align
 
-    # Insertar datos con hipervínculo en nombre
     for row_idx, (name, artist, duration, url) in enumerate(tracks_data, start=2):
         ws.cell(row=row_idx, column=1).value = name
         ws.cell(row=row_idx, column=1).hyperlink = url
@@ -84,12 +97,10 @@ def main():
         ws.cell(row=row_idx, column=3).font = default_font
         ws.cell(row=row_idx, column=3).alignment = center_align
 
-    # Ajustar ancho de columnas a 257px ≈ 38.5 unidades de Excel
     ws.column_dimensions["A"].width = 38.5
     ws.column_dimensions["B"].width = 38.5
     ws.column_dimensions["C"].width = 12
 
-    # Insertar imagen de la playlist
     img = PILImage.open(img_path)
     img = img.resize((150, 150))
     img.save(img_path)
@@ -98,13 +109,11 @@ def main():
     xl_img.anchor = "E2"
     ws.add_image(xl_img)
 
-    # Insertar solo el nombre de la playlist
     name_cell = ws.cell(row=10, column=5)
     name_cell.value = f"Playlist: {playlist_name}"
     name_cell.font = Font(name="Arial", size=14, bold=True)
     name_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Guardar archivo
     safe_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in playlist_name)
     excel_file = os.path.join(OUTPUT_FOLDER, f"{safe_name}.xlsx")
     wb.save(excel_file)

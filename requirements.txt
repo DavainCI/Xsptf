@@ -1,5 +1,5 @@
-spotipy==2.20.0
-pandas==1.5.3
-requests==2.28.1
-openpyxl==3.0.10
-Pillow==9.3.0
+spotipy
+pandas
+requests
+openpyxl
+Pillow
