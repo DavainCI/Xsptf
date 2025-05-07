@@ -1,6 +1,7 @@
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import pandas as pd
+import os  # <- para manejar carpetas
 import re  # <- para limpiar el nombre del archivo
 
 def main():
@@ -36,9 +37,16 @@ def main():
         })
 
     df = pd.DataFrame(tracks_data)
-    excel_file = f"{playlist_name}.xlsx"
+
+    # 📁 Ruta de carpeta donde se guardarán los archivos
+    folder_name = "Playlists"
+    os.makedirs(folder_name, exist_ok=True)  # Crea la carpeta si no existe
+
+    # 📄 Ruta completa del archivo
+    excel_file = os.path.join(folder_name, f"{playlist_name}.xlsx")
     df.to_excel(excel_file, index=False)
-    print(f"\n✅ Excel generado: {excel_file}")
+
+    print(f"\n✅ Excel generado y guardado en: {excel_file}")
 
 if __name__ == "__main__":
     main()
