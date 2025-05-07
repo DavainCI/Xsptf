@@ -1,4 +1,4 @@
-# Xstf
+# Xsptf
 # Generador de Excel desde una Playlist de Spotify
 
 Este script te permite generar un archivo Excel con los datos de una playlist pública de Spotify: nombre de canciones, artistas y duración.
