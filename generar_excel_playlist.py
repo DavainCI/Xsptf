@@ -118,6 +118,10 @@ def main():
     excel_file = os.path.join(OUTPUT_FOLDER, f"{safe_name}.xlsx")
     wb.save(excel_file)
     print(f"\n✅ Excel generado: {excel_file}")
-
+"""
+If the world was ending, I'd wanna be next to you
+but when exit
+el humano encuentra el destino en el sendero que toma para evitarlo
+"""
 if __name__ == "__main__":
     main()
