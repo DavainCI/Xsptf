@@ -29,5 +29,5 @@ pip install -r requirements.txt
 ```
 5. Ejecuta el script
 ```bash
-python script.py
+python generar_excel_playlist.py
 ```
