@@ -1,125 +1,240 @@
+import tkinter as tk
+from tkinter import messagebox
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import pandas as pd
 import os
 import requests
-from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Font, PatternFill
 from PIL import Image as PILImage
 
-# Paleta de colores de Spotify
-SPOTIFY_GREEN = "1DB954"
-DARK_GRAY = "191414"
-LIGHT_GRAY = "EFEFEF"
+# Spotify color palette 
+# Para tkinter (con #)
+SPOTIFY_GREEN_TK = "#1DB954"
+DARK_GRAY_TK = "#191414"
+LIGHT_GRAY_TK = "#EFEFEF"
 
-# Carpeta donde guardar
+# Para openpyxl (con FF al inicio para aRGB)
+SPOTIFY_GREEN_XL = "FF1DB954"
+DARK_GRAY_XL = "FF191414"
+LIGHT_GRAY_XL = "FFEFEFEF"
+
+# Output folder
 OUTPUT_FOLDER = "PlaylistsExcel"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# Función para limpiar el nombre de la playlist y convertirlo en un nombre de archivo seguro
 def clean_filename(name):
-    # Lista de caracteres no permitidos en Windows
+    """Clean playlist name to make it safe for filenames"""
     invalid_chars = ['\\', '/', ':', '*', '?', '"', '<', '>', '|']
     for char in invalid_chars:
         name = name.replace(char, "_")
     return name
 
-def main():
-    client_id = "71114e96572a4b759750f90f89653e12"
-    client_secret = "44374ebc9731491e87bee7fad0156a2c"
-
-    auth_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-    sp = spotipy.Spotify(auth_manager=auth_manager)
-
-    playlist_url = input("🎵 Pega la URL de la playlist de Spotify: ")
-    playlist_id = playlist_url.split("/")[-1].split("?")[0]
-
-    playlist = sp.playlist(playlist_id)
-    playlist_name = playlist['name']
-    playlist_image_url = playlist['images'][0]['url']
-
-    print(f"URL de la imagen de la playlist: {playlist_image_url}")
+def show_custom_popup(message, excel_path):
+    """Show custom popup with options to open file/folder"""
+    root = tk.Toplevel() 
+    root.title("✅ Playlist Exportada")
+    root.geometry("500x250")  # Aumenté un poco el tamaño
+    window_width = 500
+    window_height = 250
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    position_x = int(screen_width/2 - window_width/2)
+    position_y = int(screen_height/2 - window_height/2)
+    root.geometry(f"{window_width}x{window_height}+{position_x}+{position_y}")
+    root.configure(bg=DARK_GRAY_TK)
     
-    # Limpiar el nombre de la playlist para evitar caracteres no permitidos
-    safe_playlist_name = clean_filename(playlist_name)
+    # Frame principal con bordes redondeados
+    main_frame = tk.Frame(
+        root, 
+        bg=DARK_GRAY_TK,
+        highlightbackground=SPOTIFY_GREEN_TK,
+        highlightthickness=2,
+        bd=0,
+        relief='solid'
+    )
+    main_frame.pack(expand=True, fill='both', padx=20, pady=20)
+    
+    # Main message - Formato mejorado
+    msg_frame = tk.Frame(main_frame, bg=DARK_GRAY_TK)
+    msg_frame.pack(pady=(20, 10), padx=20, fill='both', expand=True)
+    
+    lines = message.split('\n')
+    for line in lines:
+        tk.Label(
+            msg_frame, 
+            text=line,
+            bg=DARK_GRAY_TK,
+            fg=LIGHT_GRAY_TK if not line.startswith("📌") else SPOTIFY_GREEN_TK,
+            font=("Arial", 11, "bold" if line.startswith("Playlist") else "normal"),
+            anchor='w'
+        ).pack(fill='x', pady=2)
+    
+    # Button frame
+    btn_frame = tk.Frame(main_frame, bg=DARK_GRAY_TK)
+    btn_frame.pack(pady=(10, 20))
+    
+    # Función para crear botones redondeados
+    def create_rounded_button(parent, text, command, bg_color, fg_color):
+        btn = tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=bg_color,
+            fg=fg_color,
+            font=("Arial", 10, "bold"),
+            bd=0,
+            highlightthickness=0,
+            relief='flat',
+            padx=15,
+            pady=5
+        )
+        # Simular bordes redondeados (tkinter no los soporta nativamente)
+        btn.config(activebackground=bg_color, activeforeground=fg_color)
+        btn.bind("<Enter>", lambda e: btn.config(bg=bg_color))
+        btn.bind("<Leave>", lambda e: btn.config(bg=bg_color))
+        return btn
+    
+    # Buttons with rounded style
+    create_rounded_button(
+        btn_frame, "Abrir Archivo", 
+        lambda: os.startfile(excel_path),
+        SPOTIFY_GREEN_TK, "white"
+    ).pack(side=tk.LEFT, padx=10)
+    
+    create_rounded_button(
+        btn_frame, "Abrir Carpeta", 
+        lambda: os.startfile(os.path.dirname(excel_path)),
+        "#333333", "white"
+    ).pack(side=tk.LEFT, padx=10)
+    
+    create_rounded_button(
+        btn_frame, "Cerrar", 
+        root.destroy,
+        "#555555", "white"
+    ).pack(side=tk.LEFT, padx=10)
 
-    # Descargar imagen
-    response = requests.get(playlist_image_url)
-    if response.status_code == 200:
+    root.grab_set()
+    root.wait_window() 
+
+def main():
+    try:
+        # Spotify API credentials
+        client_id = "71114e96572a4b759750f90f89653e12"
+        client_secret = "44374ebc9731491e87bee7fad0156a2c"
+
+        # Authenticate with Spotify
+        auth_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+        sp = spotipy.Spotify(auth_manager=auth_manager)
+
+        # Get playlist URL from user
+        playlist_url = input("🎵 Pega la URL de la playlist de Spotify: ").strip()
+        playlist_id = playlist_url.split("/")[-1].split("?")[0]
+
+        # Get playlist data
+        playlist = sp.playlist(playlist_id)
+        playlist_name = playlist['name']
+        playlist_image_url = playlist['images'][0]['url']
+        print(f"📌 Playlist: {playlist_name}")
+        print(f"🌉 URL de la imagen: {playlist_image_url}")
+        
+        # Create safe filename
+        safe_playlist_name = clean_filename(playlist_name)
+        excel_file = os.path.join(OUTPUT_FOLDER, f"{safe_playlist_name}.xlsx")
         img_path = os.path.join(OUTPUT_FOLDER, f"{safe_playlist_name}_image.png")
+
+        # Download playlist image
+        response = requests.get(playlist_image_url)
+        if response.status_code != 200:
+            raise Exception(f"Error al descargar la imagen (Código {response.status_code})")
+        
         with open(img_path, 'wb') as f:
             f.write(response.content)
-    else:
-        print(f"Error al descargar la imagen. Código de estado: {response.status_code}")
-        return
 
-    tracks_data = []
-    for item in playlist['tracks']['items']:
-        track = item['track']
-        name = track['name']
-        url = track['external_urls']['spotify']
-        artist = ", ".join([a['name'] for a in track['artists']])
-        duration_ms = track['duration_ms']
-        minutes = duration_ms // 60000
-        seconds = (duration_ms % 60000) // 1000
-        duration = f"{minutes}:{seconds:02d}"
-        tracks_data.append((name, artist, duration, url))
+        # Process tracks
+        tracks_data = []
+        for item in playlist['tracks']['items']:
+            track = item['track']
+            name = track['name']
+            url = track['external_urls']['spotify']
+            artist = ", ".join([a['name'] for a in track['artists']])
+            duration_ms = track['duration_ms']
+            duration = f"{duration_ms//60000}:{(duration_ms%60000)//1000:02d}"
+            tracks_data.append((name, artist, duration, url))
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Playlist"
+        # Create Excel workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Playlist"
 
-    headers = ["Canción", "Artista(s)", "Duración"]
-    ws.append(headers)
+        # Add headers with Spotify style
+        headers = ["Canción", "Artista(s)", "Duración"]
+        ws.append(headers)
+        
+        header_style = {
+            'font': Font(bold=True, color="FFFFFF", name="Arial"),
+            'fill': PatternFill("solid", fgColor=SPOTIFY_GREEN_XL),  # Usamos la versión para Excel
+            'alignment': Alignment(horizontal="center", vertical="center")
+        }
+        
+        for col in range(1, 4):
+            cell = ws.cell(row=1, column=col)
+            for attr, value in header_style.items():
+                setattr(cell, attr, value)
 
-    header_font = Font(bold=True, color="FFFFFF", name="Arial")
-    header_fill = PatternFill("solid", fgColor=SPOTIFY_GREEN)
-    center_align = Alignment(horizontal="center", vertical="center")
-    default_font = Font(name="Arial", size=11)
+        # Add tracks data
+        for row_idx, (name, artist, duration, url) in enumerate(tracks_data, start=2):
+            # Song name with hyperlink
+            ws.cell(row=row_idx, column=1, value=name).hyperlink = url
+            ws.cell(row=row_idx, column=1).font = Font(name="Arial", color="0563C1", underline="single")
+            
+            # Artist
+            ws.cell(row=row_idx, column=2, value=artist).font = Font(name="Arial", size=11)
+            
+            # Duration (centered)
+            ws.cell(row=row_idx, column=3, value=duration)
+            ws.cell(row=row_idx, column=3).font = Font(name="Arial", size=11)
+            ws.cell(row=row_idx, column=3).alignment = Alignment(horizontal="center")
 
-    for col in range(1, 4):
-        cell = ws.cell(row=1, column=col)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center_align
+        # Set column widths
+        ws.column_dimensions["A"].width = 38.5
+        ws.column_dimensions["B"].width = 38.5
+        ws.column_dimensions["C"].width = 12
 
-    for row_idx, (name, artist, duration, url) in enumerate(tracks_data, start=2):
-        ws.cell(row=row_idx, column=1).value = name
-        ws.cell(row=row_idx, column=1).hyperlink = url
-        ws.cell(row=row_idx, column=1).font = Font(name="Arial", color="0563C1", underline="single")
+        # Add playlist image (resized)
+        img = PILImage.open(img_path).resize((150, 150))
+        img.save(img_path)
+        ws.add_image(XLImage(img_path), "E2")
 
-        ws.cell(row=row_idx, column=2).value = artist
-        ws.cell(row=row_idx, column=2).font = default_font
+        # Add playlist title
+        title_cell = ws.cell(row=10, column=5, value=f"Playlist: {playlist_name}")
+        title_cell.font = Font(name="Arial", size=14, bold=True)
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-        ws.cell(row=row_idx, column=3).value = duration
-        ws.cell(row=row_idx, column=3).font = default_font
-        ws.cell(row=row_idx, column=3).alignment = center_align
+        # Save the workbook
+        wb.save(excel_file)
+        print(f"\n💾 Archivo guardado en: {os.path.abspath(excel_file)}")
+        print(f"🎵 Total de canciones: {len(tracks_data)}")
 
-    ws.column_dimensions["A"].width = 38.5
-    ws.column_dimensions["B"].width = 38.5
-    ws.column_dimensions["C"].width = 12
+        # Show success popup
+        show_custom_popup(
+        f"Playlist exportada con éxito!\n\n"
+        f"📌 Nombre: {playlist_name}\n"
+        f"🎵 Canciones: {len(tracks_data)}\n"
+        f"📁 Ubicación: {os.path.abspath(excel_file)}",
+        excel_file
+)
 
-    img = PILImage.open(img_path)
-    img = img.resize((150, 150))
-    img.save(img_path)
+    except Exception as e:
+        # Show error message
+        error_root = tk.Tk()
+        error_root.withdraw()
+        messagebox.showerror(
+            "❌ Error",
+            f"No se pudo exportar la playlist:\n\n{str(e)}"
+        )
+        print(f"\n❌ Error: {str(e)}")
 
-    xl_img = XLImage(img_path)
-    xl_img.anchor = "E2"
-    ws.add_image(xl_img)
-
-    name_cell = ws.cell(row=10, column=5)
-    name_cell.value = f"Playlist: {playlist_name}"
-    name_cell.font = Font(name="Arial", size=14, bold=True)
-    name_cell.alignment = Alignment(horizontal="center", vertical="center")
-
-    safe_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in playlist_name)
-    excel_file = os.path.join(OUTPUT_FOLDER, f"{safe_name}.xlsx")
-    wb.save(excel_file)
-    print(f"\n✅ Excel generado: {excel_file}")
-"""
-mi pica el webo
-"""
 if __name__ == "__main__":
     main()
