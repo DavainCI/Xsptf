@@ -119,9 +119,7 @@ def main():
     wb.save(excel_file)
     print(f"\n✅ Excel generado: {excel_file}")
 """
-If the world was ending, I'd wanna be next to you
-but when exit
-el humano encuentra el destino en el sendero que toma para evitarlo
+mi pica el webo
 """
 if __name__ == "__main__":
     main()
